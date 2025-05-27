@@ -1,7 +1,21 @@
-let productos = [
-    {id: 1, nombre: 'Monitor', precio: 40000},
-    {id: 2, nombre: 'Gabinete', precio: 5000},
-]
+const fs = require('fs')
+const path = require('path')
+const filePath = path.join(__dirname, '../db/productos.json')
+
+
+const leerProductos = () => {
+    const data = fs.readFileSync(filePath, 'utf8')
+    return JSON.parse(data)
+}
+
+
+const escribirProductos = (productos) => {
+    fs.writeFileSync(filePath, JSON.stringify(productos, null, 2))
+}
+
+
+let productos = leerProductos()
+
 
 
 //Obtiene todos los productos
@@ -23,19 +37,26 @@ const createProducts = (req, res) => {
     const nuevoProducto = req.body
     nuevoProducto.id = productos.length + 1
     productos.push(nuevoProducto)
+    escribirProductos(productos)
     res.json({status: 201, data: nuevoProducto, massage: 'Producto creado exitosamente'})
 }
 
 
 //Actualiza un producto
 const updateProducts = (req, res) => {
-    const producto = productos.find(item => item.id === parseInt(req.params.id))
-    if(!producto) return res.json({status: 404, massage: 'Producto no encontrado'})
+    const producto = productos.find(item => item.id === parseInt(req.params.id));
+    if (!producto) return res.json({ status: 404, massage: 'Producto no encontrado' });
 
-    producto.nombre = nombre || producto.nombre
-    producto.precio = precio || producto.precio
-    res.json({status: 200, data: producto, massage: 'Producto editado exitosamente'})
-}
+    const { nombre, precio } = req.body;
+
+    producto.nombre = nombre || producto.nombre;
+    producto.precio = precio || producto.precio;
+
+    escribirProductos(productos);
+
+    res.json({ status: 200, data: producto, massage: 'Producto editado exitosamente' });
+};
+
 
 
 //Elimina un producto
@@ -44,6 +65,9 @@ const deleteProducts = (req, res) => {
     if(!producto) return res.json({status: 404, massage: 'Producto no encontrado'})
 
     productos = productos.filter(item => item.id !== producto.id)
+    
+    escribirProductos(productos)
+    
     res.json({status: 200, data: producto, massage: 'Producto eliminado exitosamente'})
 }
 

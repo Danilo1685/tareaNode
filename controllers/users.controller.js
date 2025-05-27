@@ -1,55 +1,103 @@
-let usuarios = [
-    { id: 1, nombre: 'Juan', mail: "juan@juan.com" },
-    { id: 2, nombre: 'Pedro', mail: "pedro@pedro.com" },
-]
+const fs = require('fs')
+const { console } = require('inspector')
+const path = require('path')
+const filePath = path.join(__dirname, '../db/user.json')
 
 
-//Obtiene todos los usuarios
-const getUsers = (req, res) => {
-    res.json({ data: usuarios, status: 200, massage: 'Usuarios obtenidos exitosamente' })
+const leerUser = () => {
+    const data = fs.readFileSync(filePath, 'utf8')
+    return JSON.parse(data)
 }
 
 
-//Obtiene el usuario atraves del id
+const escribirUsuarios = (usuarios) => {
+    fs.writeFileSync(filePath, JSON.stringify(usuarios, null, 2))
+}
+
+
+let usuarios = leerUser()
+
+
+// Obtiene todos los usuarios
+const getUsers = (req, res) => {
+    res.json({ data: usuarios, status: 200, message: 'Usuarios obtenidos exitosamente' })
+}
+
+
+// Obtiene el usuario a través del ID
 const getUserById = (req, res) => {
     const usuario = usuarios.find(item => item.id === parseInt(req.params.id))
-    if (!usuario) return res.json({ status: 404, massage: 'Usuario no encontrado' })
-    res.json({ data: usuario, status: 200, massage: 'Usuario encontrado exitosamente' })
+    if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado' })
+    res.json({ data: usuario, status: 200, message: 'Usuario encontrado exitosamente' })
 }
 
 
-//Crea un nuevo usuario
+// Crea un nuevo usuario
 const createUser = (req, res) => {
-    const nuevoUsuario = req.body
-    nuevoUsuario.id = usuarios.length + 1
-    usuarios.push(nuevoUsuario)
-    res.json({status: 201, nuevoUsuario, massage: 'Usuario creado exitosamente'})
-}
-
-
-//Actualiza un usuario
-const updateUser = (req, res) => {
-    const usuario = usuarios.find(item => item.id === parseInt(req.params.id))
-    if(!usuario) return res.json({status: 404, massage: 'Usuario no encontrado'})
     
-    usuario.nombre = nombre || usuario.nombre
-    usuario.mail = mail || usuario.mail
-    res.json({status: 200, data: usuario, massage: 'Usuario editado exitosamente'})
-}
+    const { nombre, mail, edad } = req.body;
+
+    if (!nombre || !mail || !edad) {        
+        return res.status(400).json({ message: 'Faltan datos obligatorios: nombre, mail y edad son requeridos' });
+    }
+
+    if (usuarios.find(user => user.mail === mail)) {
+        return res.status(400).json({ message: 'El email ya está registrado' });
+    }
+
+    const nuevoUsuario = {
+        id: usuarios.length ? usuarios[usuarios.length - 1].id + 1 : 1,
+        nombre,
+        mail,
+        edad
+    };
+
+    usuarios.push(nuevoUsuario);
+    escribirUsuarios(usuarios);
+
+    res.status(201).json({ nuevoUsuario, message: 'Usuario creado exitosamente' });
+};
 
 
-//Elimina un usuario
+
+// Actualiza un usuario
+const updateUser = (req, res) => {
+    const usuario = usuarios.find(item => item.id === parseInt(req.params.id));
+    if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    const { nombre, mail, edad } = req.body;
+
+    if (mail && usuarios.find(user => user.mail === mail && user.id !== usuario.id)) {
+        return res.status(400).json({ message: 'El email ya está registrado por otro usuario' });
+    }
+
+    if (!nombre && !mail && !edad) {
+        return res.status(400).json({ message: 'Se requiere al menos un campo (nombre, mail o edad) para actualizar' });
+    }
+
+    usuario.nombre = nombre || usuario.nombre;
+    usuario.mail = mail || usuario.mail;
+    usuario.edad = edad || usuario.edad;
+    escribirUsuarios(usuarios);
+
+    res.status(200).json({ data: usuario, message: 'Usuario editado exitosamente' });
+};
+
+
+// Elimina un usuario
 const deleteUser = (req, res) => {
     const usuario = usuarios.find(item => item.id === parseInt(req.params.id))
-    if(!usuario) return res.json({status: 404, massage: 'Usuario no encontrado'})
-    
+    if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado' })
+
     usuarios = usuarios.filter(item => item.id !== usuario.id)
-    res.json({status: 200, massage: 'Usuario eliminado exitosamente'})
+    escribirUsuarios(usuarios)
+
+    res.status(200).json({ message: 'Usuario eliminado exitosamente' })
 }
 
 
-//Exporta los metodos
-module.exports ={
+// Exporta los métodos
+module.exports = {
     getUsers,
     getUserById,
     createUser,
